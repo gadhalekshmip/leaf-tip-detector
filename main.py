@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import os
 os.environ["STREAMLIT_WATCHER_TYPE"] = "none"
+
 # Configure page
 st.set_page_config(
     page_title="🌿 Leaf Tip Detector",
@@ -44,7 +45,7 @@ def main():
             show_quick_detection_page()
         elif mode == 'research':
             show_research_mode_page()
-        elif mode == 'annotation':  # ADD THIS
+        elif mode == 'annotation':
             show_annotation_page()
 
 def show_mode_selection():
@@ -90,6 +91,7 @@ def show_mode_selection():
         if st.button("🔬 Start Research Mode", key="research_mode", use_container_width=True):
             st.session_state.app_mode = 'research'
             st.rerun()
+    
     with col3:
         st.markdown("""
         <div class="mode-card annotation-mode">
@@ -107,6 +109,7 @@ def show_mode_selection():
         if st.button("✏️ Start Annotation", key="annotation_mode", use_container_width=True):
             st.session_state.app_mode = 'annotation'
             st.rerun()
+    
     # Show available models info
     with st.expander("🤖 Available Models", expanded=False):
         available_models = get_available_models()
@@ -133,7 +136,6 @@ def show_quick_detection_page():
             st.rerun()
         
         st.markdown("---")
-        # ADD THIS - Navigation to Annotation
         if st.button("✏️ Go to Annotation", key="quick_to_annotation"):
             st.session_state.app_mode = 'annotation'
             st.rerun()
@@ -157,8 +159,6 @@ def show_research_mode_page():
             st.rerun()
         
         st.markdown("---")
-
-         # ADD THIS - Navigation to Annotation
         if st.button("✏️ Go to Annotation", key="research_to_annotation"):
             st.session_state.app_mode = 'annotation'
             st.rerun()
@@ -170,6 +170,7 @@ def show_research_mode_page():
     except ImportError as e:
         st.error(f"Failed to load Research Mode page: {e}")
         st.info("Make sure all required modules are installed.")
+
 def show_annotation_page():
     """Display Annotation page"""
     
@@ -196,6 +197,7 @@ def show_annotation_page():
     except ImportError as e:
         st.error(f"Failed to load Annotation page: {e}")
         st.info("Make sure the annotation module is available.")
+
 def check_requirements():
     """Check if all required files and models are available"""
     
@@ -214,8 +216,7 @@ def check_requirements():
     
     # Check for required Python packages
     required_packages = [
-        'ultralytics', 'torch', 'torchvision', 'PIL', 'numpy', 
-        'streamlit_drawable_canvas', 'plotly'
+        'ultralytics', 'torch', 'torchvision', 'PIL', 'numpy', 'plotly'
     ]
     
     missing_packages = []
@@ -231,40 +232,46 @@ def check_requirements():
     return issues
 
 if __name__ == "__main__":
-    # Check requirements
-    issues = check_requirements()
-    
-    if issues:
-        st.error("⚠️ **Setup Issues Detected**")
-        for issue in issues:
-            st.write(issue)
+    # 🚨 FIXED: Check if user already bypassed requirements check
+    if not st.session_state.get('bypass_requirements_check', False):
         
-        st.markdown("---")
-        st.markdown("### 📋 Setup Instructions")
-        st.markdown("""
-        1. **Install required packages:**
-           ```bash
-           pip install -r requirements.txt
-           ```
+        # Check requirements
+        issues = check_requirements()
         
-        2. **Create models directory and add your model files:**
-           ```
-           models/
-           ├── best(grid_syn_keypt).pt      # 3x3 Grid model
-           ├── key_grid_syn_5x5.pt          # 5x5 Grid model (best)
-           ├── best.pt                      # YOLO entire image
-           └── fold_4_best_map50_aug.pth    # Faster R-CNN model
-           ```
-        
-        3. **Restart the application**
-        """)
-        
-        st.info("The application will work with available models, but some features may be limited.")
-        
-        # Still allow running with available components
-        st.markdown("---")
-        if st.button("🚀 Continue Anyway"):
+        if issues:
+            st.error("⚠️ **Setup Issues Detected**")
+            for issue in issues:
+                st.write(issue)
+            
+            st.markdown("---")
+            st.markdown("### 📋 Setup Instructions")
+            st.markdown("""
+            1. **Install required packages:**
+               ```bash
+               pip install ultralytics torch torchvision pillow numpy plotly streamlit
+               ```
+            
+            2. **Create models directory and add your model files:**
+               ```
+               models/
+               ├── best(grid_syn_keypt).pt      # 3x3 Grid model
+               ├── key_grid_syn_5x5.pt          # 5x5 Grid model (best)
+               ├── best.pt                      # YOLO entire image
+               └── fold_4_best_map50_aug.pth    # Faster R-CNN model
+               ```
+            
+            3. **Restart the application**
+            """)
+            
+            st.info("The application will work with available models, but some features may be limited.")
+            
+            # 🚨 FIXED: Set bypass flag when user clicks continue
+            if st.button("🚀 Continue Anyway"):
+                st.session_state.bypass_requirements_check = True
+                st.rerun()
+        else:
+            # All good, run the app
             main()
     else:
-        # All good, run the app
+        # Requirements check bypassed, run the app
         main()
