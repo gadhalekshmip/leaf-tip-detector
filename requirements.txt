@@ -1,15 +1,15 @@
-# requirements.txt - Compatible with Python 3.13.3 on Streamlit Cloud
+# requirements.txt - Back to what WORKED before
 
 # Core Streamlit
 streamlit>=1.28.0
 
-# Interactive components
+# Interactive components for image editing
 streamlit-image-coordinates>=0.1.6
 plotly>=5.15.0
 
-# ML and Computer Vision - AVAILABLE FOR PYTHON 3.13.3
-torch>=2.5.0
-torchvision>=0.20.0
+# ML and Computer Vision - FLEXIBLE RANGES LIKE BEFORE
+torch>=2.0.0
+torchvision>=0.15.0
 ultralytics>=8.0.0
 opencv-python-headless>=4.8.0
 
