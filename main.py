@@ -1,10 +1,12 @@
 # main.py
-
+import torch
 import streamlit as st
 import os
 from pathlib import Path
 import os
 os.environ["STREAMLIT_WATCHER_TYPE"] = "none"
+os.environ["STREAMLIT_SERVER_FILE_WATCHER_TYPE"] = "none"
+os.environ["STREAMLIT_CLIENT_SHOW_ERROR_DETAILS"] = "false"
 
 # Configure page
 st.set_page_config(
