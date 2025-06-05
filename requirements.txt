@@ -23,8 +23,3 @@ pandas>=2.0.0
 
 # Utilities
 python-dotenv>=1.0.0
-
-# Missing dependencies from your code
-tempfile  # Built-in, no version needed
-zipfile36>=0.1.0
-xml.etree.ElementTree  # Built-in, but some deployments need explicit mention
