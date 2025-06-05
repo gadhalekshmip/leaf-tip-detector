@@ -40,40 +40,6 @@ def show_entire_image_interface():
     with col_right:
         show_right_panel()
 
-def init_entire_image_session_state():
-    """UPDATED session state initialization"""
-    
-    # Tab-specific state (isolation)
-    if 'entire_detections' not in st.session_state:
-        st.session_state.entire_detections = []
-    if 'entire_current_image' not in st.session_state:
-        st.session_state.entire_current_image = None
-    if 'entire_current_image_path' not in st.session_state:
-        st.session_state.entire_current_image_path = None
-    if 'entire_batch_results' not in st.session_state:
-        st.session_state.entire_batch_results = {}
-    if 'entire_image_files' not in st.session_state:
-        st.session_state.entire_image_files = []
-    if 'entire_current_image_index' not in st.session_state:
-        st.session_state.entire_current_image_index = 0
-    if 'entire_editing_mode' not in st.session_state:
-        st.session_state.entire_editing_mode = None
-    
-    # Model processors
-    if 'entire_yolo_processor' not in st.session_state:
-        st.session_state.entire_yolo_processor = None
-    if 'entire_frcnn_processor' not in st.session_state:
-        st.session_state.entire_frcnn_processor = None
-    
-    # UI state
-    if 'entire_selected_model' not in st.session_state:
-        st.session_state.entire_selected_model = 'yolo'
-    
-    # ADD: Upload counters for resetting file uploaders
-    if 'entire_upload_counter' not in st.session_state:
-        st.session_state.entire_upload_counter = 0
-    if 'entire_folder_counter' not in st.session_state:
-        st.session_state.entire_folder_counter = 0
 
 # Updated show_edit_points_interface() function for tabs/entire_image_tab.py
 def show_edit_points_interface():
@@ -409,53 +375,6 @@ def show_batch_download():
     except Exception as e:
         st.error(f"Error creating batch download: {str(e)}")
 
-def navigate_to_image(new_index: int):
-    """Navigate to specific batch image - FIXED to save manual edits"""
-    
-    total_images = len(st.session_state.entire_image_files)
-    
-    if not (0 <= new_index < total_images):
-        return
-    
-    # CRITICAL FIX: Save current detections to batch results ALWAYS (includes manual edits)
-    if st.session_state.entire_current_image_path:
-        current_path = st.session_state.entire_current_image_path
-        
-        if hasattr(st.session_state, 'entire_batch_original_names'):
-            try:
-                current_original_idx = st.session_state.entire_image_files.index(current_path)
-                original_name = st.session_state.entire_batch_original_names[current_original_idx]
-            except (ValueError, IndexError):
-                original_name = os.path.basename(current_path)
-        else:
-            original_name = os.path.basename(current_path)
-            
-        # ALWAYS save current detections (including manual edits and empty lists)
-        st.session_state.entire_batch_results[current_path] = {
-            'detections': st.session_state.entire_detections.copy(),  # Include manual edits
-            'image_name': original_name,
-            'method': st.session_state.entire_selected_model
-        }
-    
-    # Load new image
-    new_image_path = st.session_state.entire_image_files[new_index]
-    
-    try:
-        image = Image.open(new_image_path)
-        st.session_state.entire_current_image = image
-        st.session_state.entire_current_image_path = new_image_path
-        st.session_state.entire_current_batch_index = new_index
-        
-        # Restore detections if they exist
-        if new_image_path in st.session_state.entire_batch_results:
-            st.session_state.entire_detections = st.session_state.entire_batch_results[new_image_path]['detections'].copy()
-        else:
-            st.session_state.entire_detections = []
-        
-        st.rerun()
-        
-    except Exception as e:
-        st.error(f"Error loading image: {str(e)}")
 
 def show_right_panel():
     """Right panel with detection controls"""
@@ -737,7 +656,243 @@ def send_batch_to_annotation():
     # Count total points including manual edits
     total_points = sum(len(r['detections']) for r in st.session_state.entire_batch_results.values())
     st.success(f"✅ Batch sent to annotation tool! ({len(st.session_state.entire_batch_results)} images, {total_points} total points including manual edits)")
+# FIXES for entire_image_tab.py - Replace these functions
 
+def init_entire_image_session_state():
+    """FIXED session state initialization with correct variable names"""
+    
+    # Tab-specific state (isolation)
+    if 'entire_detections' not in st.session_state:
+        st.session_state.entire_detections = []
+    if 'entire_current_image' not in st.session_state:
+        st.session_state.entire_current_image = None
+    if 'entire_current_image_path' not in st.session_state:
+        st.session_state.entire_current_image_path = None
+    if 'entire_batch_results' not in st.session_state:
+        st.session_state.entire_batch_results = {}
+    
+    # FIXED: Use consistent variable name (match grid_analysis_tab.py)
+    if 'entire_image_files' not in st.session_state:
+        st.session_state.entire_image_files = []
+    if 'entire_current_image_index' not in st.session_state:  # FIXED: Use index not batch_index
+        st.session_state.entire_current_image_index = 0
+        
+    if 'entire_editing_mode' not in st.session_state:
+        st.session_state.entire_editing_mode = None
+    
+    # Model processors
+    if 'entire_yolo_processor' not in st.session_state:
+        st.session_state.entire_yolo_processor = None
+    if 'entire_frcnn_processor' not in st.session_state:
+        st.session_state.entire_frcnn_processor = None
+    
+    # UI state
+    if 'entire_selected_model' not in st.session_state:
+        st.session_state.entire_selected_model = 'yolo'
+    
+    # Upload counters for resetting file uploaders
+    if 'entire_upload_counter' not in st.session_state:
+        st.session_state.entire_upload_counter = 0
+    if 'entire_folder_counter' not in st.session_state:
+        st.session_state.entire_folder_counter = 0
+
+def handle_image_upload(uploaded_file):
+    """FIXED Handle single image upload - clear batch data properly"""
+    try:
+        # FIXED: Clear any existing batch data when single image uploaded
+        st.session_state.entire_image_files = []  # FIXED: Use entire_image_files not entire_batch_images
+        st.session_state.entire_batch_results = {}
+        st.session_state.entire_current_image_index = 0  # FIXED: Use index not batch_index
+        
+        # Save to temp file
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp_file:
+            tmp_file.write(uploaded_file.read())
+            temp_path = tmp_file.name
+        
+        # Load image
+        image = Image.open(temp_path)
+        st.session_state.entire_current_image = image
+        st.session_state.entire_current_image_path = temp_path
+        
+        # Clear previous detections
+        st.session_state.entire_detections = []
+        
+        st.success(f"Image loaded: {uploaded_file.name}")
+        
+    except Exception as e:
+        st.error(f"Error loading image: {str(e)}")
+
+def show_batch_navigation():
+    """FIXED Batch Navigation - use correct variable names"""
+    
+    # FIXED: Use entire_current_image_index consistently
+    if 'entire_current_image_index' not in st.session_state:
+        st.session_state.entire_current_image_index = 0
+    
+    total_images = len(st.session_state.entire_image_files)
+    current_idx = min(st.session_state.entire_current_image_index, total_images - 1)
+    
+    # FIXED: Update session state if needed
+    if current_idx != st.session_state.entire_current_image_index:
+        st.session_state.entire_current_image_index = current_idx
+    
+    st.markdown("---")
+    st.markdown("### 📂 Batch Navigation")
+    
+    # Get original filename
+    if hasattr(st.session_state, 'entire_batch_original_names') and current_idx < len(st.session_state.entire_batch_original_names):
+        current_name = st.session_state.entire_batch_original_names[current_idx]
+    else:
+        current_name = os.path.basename(st.session_state.entire_image_files[current_idx])
+    
+    st.markdown(f"**Image {current_idx + 1} of {total_images}:** {current_name}")
+    
+    col1, col2, col3, col4, col5 = st.columns(5)
+    
+    with col1:
+        if st.button("◀ Previous", disabled=current_idx <= 0, key="entire_batch_prev"):
+            navigate_to_image(current_idx - 1)
+    
+    with col2:
+        if st.button("Next ▶", disabled=current_idx >= total_images - 1, key="entire_batch_next"):
+            navigate_to_image(current_idx + 1)
+    
+    with col3:
+        if st.button("🚀 Process All", key="entire_batch_process_all"):
+            run_all_images()
+    
+    with col4:
+        if st.button("💾 Download Batch", key="entire_batch_download", disabled=not st.session_state.entire_batch_results):
+            show_batch_download()
+    
+    with col5:
+        if st.button("📤 Send Batch to Annotation", key="entire_send_batch", disabled=not st.session_state.entire_batch_results):
+            send_batch_to_annotation()
+
+def navigate_to_image(new_index: int):
+    """FIXED Navigate to specific batch image - use correct variable names"""
+    
+    total_images = len(st.session_state.entire_image_files)
+    
+    if not (0 <= new_index < total_images):
+        return
+    
+    # CRITICAL FIX: Save current detections to batch results ALWAYS (includes manual edits)
+    if st.session_state.entire_current_image_path:
+        current_path = st.session_state.entire_current_image_path
+        
+        if hasattr(st.session_state, 'entire_batch_original_names'):
+            try:
+                current_original_idx = st.session_state.entire_image_files.index(current_path)
+                original_name = st.session_state.entire_batch_original_names[current_original_idx]
+            except (ValueError, IndexError):
+                original_name = os.path.basename(current_path)
+        else:
+            original_name = os.path.basename(current_path)
+            
+        # ALWAYS save current detections (including manual edits and empty lists)
+        st.session_state.entire_batch_results[current_path] = {
+            'detections': st.session_state.entire_detections.copy(),  # Include manual edits
+            'image_name': original_name,
+            'method': st.session_state.entire_selected_model
+        }
+    
+    # Load new image
+    new_image_path = st.session_state.entire_image_files[new_index]
+    
+    try:
+        image = Image.open(new_image_path)
+        st.session_state.entire_current_image = image
+        st.session_state.entire_current_image_path = new_image_path
+        st.session_state.entire_current_image_index = new_index  # FIXED: Update index
+        
+        # Restore detections if they exist
+        if new_image_path in st.session_state.entire_batch_results:
+            st.session_state.entire_detections = st.session_state.entire_batch_results[new_image_path]['detections'].copy()
+        else:
+            st.session_state.entire_detections = []
+        
+        st.rerun()
+        
+    except Exception as e:
+        st.error(f"Error loading image: {str(e)}")
+
+def handle_folder_upload(uploaded_folder):
+    """FIXED Handle folder (ZIP) upload - use correct variable names"""
+    
+    # Show immediate feedback
+    st.info("📦 Processing ZIP file...")
+    
+    try:
+        # Clear any existing data completely
+        st.session_state.entire_current_image = None
+        st.session_state.entire_current_image_path = None
+        st.session_state.entire_detections = []
+        st.session_state.entire_image_files = []  # FIXED: Use correct variable name
+        st.session_state.entire_batch_original_names = []
+        st.session_state.entire_batch_results = {}
+        
+        # Process the ZIP file
+        with st.spinner("Extracting and loading images..."):
+            with tempfile.TemporaryDirectory() as temp_dir:
+                zip_path = os.path.join(temp_dir, "upload.zip")
+                
+                with open(zip_path, "wb") as f:
+                    f.write(uploaded_folder.read())
+                
+                extract_dir = os.path.join(temp_dir, "extracted")
+                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                    zip_ref.extractall(extract_dir)
+                
+                # Find image files (avoid duplicates)
+                image_files = []
+                seen_names = set()
+                
+                for ext in ['.png', '.jpg', '.jpeg', '.bmp', '.tiff']:
+                    for img_file in Path(extract_dir).rglob(f"*{ext}"):
+                        if img_file.name not in seen_names:
+                            image_files.append(img_file)
+                            seen_names.add(img_file.name)
+                    for img_file in Path(extract_dir).rglob(f"*{ext.upper()}"):
+                        if img_file.name not in seen_names:
+                            image_files.append(img_file)
+                            seen_names.add(img_file.name)
+                
+                if image_files:
+                    # Copy to persistent location (no duplicates)
+                    persistent_files = []
+                    original_names = []
+                    
+                    for img_file in image_files:
+                        # Create unique temp file
+                        with tempfile.NamedTemporaryFile(delete=False, suffix=img_file.suffix) as tmp:
+                            with open(img_file, 'rb') as src:
+                                tmp.write(src.read())
+                            persistent_files.append(tmp.name)
+                            original_names.append(img_file.name)
+                    
+                    # FIXED: Store batch data with correct variable names
+                    st.session_state.entire_image_files = persistent_files  # FIXED: Use entire_image_files
+                    st.session_state.entire_batch_original_names = original_names 
+                    st.session_state.entire_current_image_index = 0  # FIXED: Use index not batch_index
+                    st.session_state.entire_batch_results = {}
+                    
+                    # Increment folder counter to reset uploader
+                    st.session_state.entire_folder_counter += 1  
+                    
+                    # Load first image
+                    navigate_to_image(0)
+                    
+                    st.success(f"✅ Successfully loaded {len(image_files)} unique images!")
+                    st.info("👇 Use the navigation controls below the image to browse through your batch.")
+                    st.rerun()
+                    
+                else:
+                    st.warning("⚠️ No image files found in the ZIP archive.")
+                    
+    except Exception as e:
+        st.error(f"❌ Error processing ZIP file: {str(e)}")
+        st.info("Please make sure your ZIP file contains valid image files (.png, .jpg, .jpeg, .bmp, .tiff)")
 
 
 def run_all_images():
@@ -800,107 +955,6 @@ def run_all_images():
     finally:
         progress_bar.empty()
         status_text.empty()
-def handle_image_upload(uploaded_file):
-    """Handle single image upload"""
-    try:
-        # Clear any existing batch data when single image uploaded
-        st.session_state.entire_batch_images = []
-        st.session_state.entire_batch_results = {}
-        st.session_state.entire_current_batch_index = 0
-        
-        # Save to temp file
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp_file:
-            tmp_file.write(uploaded_file.read())
-            temp_path = tmp_file.name
-        
-        # Load image
-        image = Image.open(temp_path)
-        st.session_state.entire_current_image = image
-        st.session_state.entire_current_image_path = temp_path
-        
-        # Clear previous detections
-        st.session_state.entire_detections = []
-        
-        st.success(f"Image loaded: {uploaded_file.name}")
-        
-    except Exception as e:
-        st.error(f"Error loading image: {str(e)}")
-def handle_folder_upload(uploaded_folder):
-    """Handle folder (ZIP) upload with proper status feedback"""
-    
-    # Show immediate feedback
-    st.info("📦 Processing ZIP file...")
-    
-    try:
-        # Clear any existing data completely
-        st.session_state.entire_current_image = None
-        st.session_state.entire_current_image_path = None
-        st.session_state.entire_detections = []
-        st.session_state.entire_batch_images = []  # Clear existing batch
-        st.session_state.entire_batch_original_names = []  # Clear existing names
-        st.session_state.entire_batch_results = {}
-        
-        # Process the ZIP file
-        with st.spinner("Extracting and loading images..."):
-            with tempfile.TemporaryDirectory() as temp_dir:
-                zip_path = os.path.join(temp_dir, "upload.zip")
-                
-                with open(zip_path, "wb") as f:
-                    f.write(uploaded_folder.read())
-                
-                extract_dir = os.path.join(temp_dir, "extracted")
-                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                    zip_ref.extractall(extract_dir)
-                
-                # Find image files (avoid duplicates)
-                image_files = []
-                seen_names = set()
-                
-                for ext in ['.png', '.jpg', '.jpeg', '.bmp', '.tiff']:
-                    for img_file in Path(extract_dir).rglob(f"*{ext}"):
-                        if img_file.name not in seen_names:
-                            image_files.append(img_file)
-                            seen_names.add(img_file.name)
-                    for img_file in Path(extract_dir).rglob(f"*{ext.upper()}"):
-                        if img_file.name not in seen_names:
-                            image_files.append(img_file)
-                            seen_names.add(img_file.name)
-                
-                if image_files:
-                    # Copy to persistent location (no duplicates)
-                    persistent_files = []
-                    original_names = []
-                    
-                    for img_file in image_files:
-                        # Create unique temp file
-                        with tempfile.NamedTemporaryFile(delete=False, suffix=img_file.suffix) as tmp:
-                            with open(img_file, 'rb') as src:
-                                tmp.write(src.read())
-                            persistent_files.append(tmp.name)
-                            original_names.append(img_file.name)
-                    
-                    # Store batch data (ensure no duplicates)
-                    st.session_state.entire_image_files = persistent_files  # NOT entire_batch_images
-                    st.session_state.entire_batch_original_names = original_names 
-                    st.session_state.entire_current_batch_index = 0
-                    st.session_state.entire_batch_results = {}
-                    
-                    # Increment folder counter to reset uploader
-                    st.session_state.entire_folder_counter += 1  
-                    
-                    # Load first image
-                    navigate_to_image(0)
-                    
-                    st.success(f"✅ Successfully loaded {len(image_files)} unique images!")
-                    st.info("👇 Use the navigation controls below the image to browse through your batch.")
-                    st.rerun()
-                    
-                else:
-                    st.warning("⚠️ No image files found in the ZIP archive.")
-                    
-    except Exception as e:
-        st.error(f"❌ Error processing ZIP file: {str(e)}")
-        st.info("Please make sure your ZIP file contains valid image files (.png, .jpg, .jpeg, .bmp, .tiff)")
 
 
 def has_detections() -> bool:
@@ -934,50 +988,6 @@ def save_current_image():
         
     except Exception as e:
         st.error(f"Error saving image: {str(e)}")
-def show_batch_navigation():
-    """Batch Navigation - ADD send batch button"""
-    
-    if 'entire_current_image_index' not in st.session_state:
-        st.session_state.entire_current_image_index = 0
-    
-    total_images = len(st.session_state.entire_image_files)
-    current_idx = min(st.session_state.entire_current_image_index, total_images - 1)
-    
-    if current_idx != st.session_state.entire_current_image_index:
-        st.session_state.entire_current_image_index = current_idx
-    
-    st.markdown("---")
-    st.markdown("### 📂 Batch Navigation")
-    
-    # Get original filename
-    if hasattr(st.session_state, 'entire_batch_original_names') and current_idx < len(st.session_state.entire_batch_original_names):
-        current_name = st.session_state.entire_batch_original_names[current_idx]
-    else:
-        current_name = os.path.basename(st.session_state.entire_image_files[current_idx])
-    
-    st.markdown(f"**Image {current_idx + 1} of {total_images}:** {current_name}")
-    
-    col1, col2, col3, col4, col5 = st.columns(5)  # ADD col5
-    
-    with col1:
-        if st.button("◀ Previous", disabled=current_idx <= 0, key="entire_batch_prev"):
-            navigate_to_image(current_idx - 1)
-    
-    with col2:
-        if st.button("Next ▶", disabled=current_idx >= total_images - 1, key="entire_batch_next"):
-            navigate_to_image(current_idx + 1)
-    
-    with col3:
-        if st.button("🚀 Process All", key="entire_batch_process_all"):
-            run_all_images()
-    
-    with col4:
-        if st.button("💾 Download Batch", key="entire_batch_download", disabled=not st.session_state.entire_batch_results):
-            show_batch_download()
-    
-    with col5:  # ADD send batch button
-        if st.button("📤 Send Batch to Annotation", key="entire_send_batch", disabled=not st.session_state.entire_batch_results):
-            send_batch_to_annotation()
 
 def save_coordinates_csv():
     """Save detection coordinates as CSV - FIXED to use current detections"""
