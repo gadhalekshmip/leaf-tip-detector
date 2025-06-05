@@ -1,5 +1,5 @@
-# requirements.txt - FINAL VERSION
-# Matches your local Python 3.11.9 working environment
+# requirements.txt - FINAL FIX VERSION
+# ✅ Addresses NumPy 2.x incompatibility with ultralytics
 
 # Core Streamlit
 streamlit>=1.28.0
@@ -13,12 +13,18 @@ torch==2.6.0
 torchvision==0.21.0
 ultralytics==8.3.92
 
-# 🚨 CRITICAL: Headless OpenCV for Streamlit Cloud (you have opencv-python==4.11.0.86 locally)
+# 🚨 CRITICAL FIX: NumPy 1.x for ultralytics compatibility
+# This is the ROOT CAUSE of your crashes!
+numpy<2.0
+
+# Alternative specific version if above doesn't work:
+# numpy==1.24.3
+
+# 🚨 CRITICAL: Headless OpenCV for Streamlit Cloud
 opencv-python-headless==4.11.0.86
 
-# 🎯 EXACT MATCH: Your working local image/data processing versions
+# 🎯 Compatible image/data processing versions
 Pillow==11.1.0
-numpy==2.1.1
 scipy==1.15.2
 pandas==2.2.3
 
@@ -28,4 +34,3 @@ python-dotenv>=1.0.0
 PyYAML==6.0.2
 tqdm
 psutil==7.0.0
-
