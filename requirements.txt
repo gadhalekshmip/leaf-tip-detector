@@ -1,20 +1,19 @@
-# requirements.txt - OpenCV headless fix
+# requirements.txt - Fixed for Streamlit Cloud
 
 # Core Streamlit
 streamlit>=1.28.0
 
-# Interactive components
+# Interactive components  
 streamlit-image-coordinates>=0.1.6
 plotly>=5.15.0
 
-# ML and Computer Vision - HEADLESS OPENCV ONLY
-torch>=2.0.0
-torchvision>=0.15.0
-ultralytics>=8.0.0
-opencv-python
+# ML and Computer Vision - Pinned versions for stability
+torch==2.0.1
+torchvision==0.15.2
+ultralytics==8.0.196
 
-# CRITICAL: Ensure no regular opencv-python
-# opencv-python  # REMOVE THIS IF IT EXISTS ANYWHERE
+# 🚨 CRITICAL FIX: Use headless OpenCV for cloud deployment
+opencv-python-headless>=4.8.0
 
 # Image processing
 Pillow>=10.0.0
@@ -26,3 +25,6 @@ pandas>=2.0.0
 
 # Utilities
 python-dotenv>=1.0.0
+
+# For annotation mode (if used)
+streamlit-drawable-canvas>=0.9.0
